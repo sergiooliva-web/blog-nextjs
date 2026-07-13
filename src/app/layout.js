@@ -1,3 +1,5 @@
+// Корневой файл макета приложения, который определяет общую структуру HTML
+// и подключает глобальные стили и шрифты.
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
@@ -18,10 +20,7 @@ export const metadata = {
 
 export default function RootLayout({ children }) {
   return (
-    <html
-      lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
-    >
+    <html lang="en" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col">{children}</body>
     </html>
   );
