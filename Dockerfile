@@ -25,10 +25,17 @@ FROM node:20-alpine AS production
 
 WORKDIR /app
 
+RUN apk add --no-cache sqlite
+
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/public ./public
-COPY --from=builder /app/src/data ./src/data
+
+COPY ./src/database/migrations /app/migrations
+COPY ./src/database/migrate.sh /app/migrate.sh
+RUN chmod +x /app/migrate.sh
+
+RUN mkdir -p /app/data
 
 # Устанавливаем переменные окружения
 ENV NODE_ENV=production
@@ -38,4 +45,4 @@ ENV PORT=4040
 EXPOSE 4040
 
 # Запускаем приложение
-CMD ["node", "server.js"]
+CMD ["sh", "-c", "/app/migrate.sh && node server.js"]
