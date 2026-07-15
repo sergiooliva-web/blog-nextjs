@@ -1,9 +1,4 @@
-version: '3.8'
-
 services:
-  # ============================================================
-  # Next.js приложение
-  # ============================================================
   web:
     build:
       context: .
@@ -11,31 +6,16 @@ services:
       target: production
     container_name: blog-app
     ports:
-      - "4040:4040"  # ← ИЗМЕНЕНО НА 4040:4040
+      - "127.0.0.1:4040:4040"  # Чтобы не открыть порт поверх настроек ufw
     environment:
       - NODE_ENV=production
-      - PORT=4040  # ← ИЗМЕНЕНО НА 4040
+      - PORT=4040
     volumes:
-      # Монтируем папку с данными для сохранения постов
       - ./src/data:/app/src/data
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:4040"]  # ← ИЗМЕНЕНО НА 4040
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:4040/"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 10s
-
-  # ============================================================
-  # (Опционально) Nginx
-  # ============================================================
-  # nginx:
-  #   image: nginx:alpine
-  #   container_name: blog-nginx
-  #   ports:
-  #     - "80:80"
-  #   volumes:
-  #     - ./nginx.conf:/etc/nginx/nginx.conf:ro
-  #   depends_on:
-  #     - web
-  #   restart: unless-stopped
