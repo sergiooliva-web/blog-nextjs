@@ -1,42 +1,41 @@
 # ============================================================
-# 1️⃣ СТАДИЯ: БИЛД (установка зависимостей)
+# 1️⃣ СТАДИЯ: ЗАВИСИМОСТИ И PRISMA
 # ============================================================
-FROM node:20-alpine AS dependencies
+FROM node:22-alpine AS dependencies
 
 WORKDIR /app
 COPY package*.json ./
-RUN npm ci --only=production=false
+COPY prisma ./prisma/ 
+
+RUN npm ci
 
 # ============================================================
-# 2️⃣ СТАДИЯ: БИЛД (сборка приложения)
+# 2️⃣ СТАДИЯ: СБОРКА ПРИЛОЖЕНИЯ
 # ============================================================
-FROM node:20-alpine AS builder
+FROM node:22-alpine AS builder
 
 WORKDIR /app
 COPY --from=dependencies /app/node_modules ./node_modules
 COPY . .
+
+RUN npx prisma generate
 
 RUN npm run build
 
 # ============================================================
 # 3️⃣ СТАДИЯ: ПРОДАКШЕН (запуск приложения)
 # ============================================================
-FROM node:20-alpine AS production
+FROM node:22-alpine AS production
 
 WORKDIR /app
 
-RUN apk add --no-cache sqlite
+RUN npm install prisma --no-save
 
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/public ./public
-
-COPY ./src/database/migrations /app/migrations
-COPY ./src/database/migrate.sh /app/migrate.sh
-RUN chmod +x /app/migrate.sh
-
-RUN mkdir -p /app/data
-
+COPY --from=builder /app/prisma ./prisma
+COPY --from=builder /app/prisma.config.ts ./
 # Устанавливаем переменные окружения
 ENV NODE_ENV=production
 ENV PORT=4040
@@ -44,5 +43,5 @@ ENV PORT=4040
 # Открываем порт
 EXPOSE 4040
 
-# Запускаем приложение
-CMD ["sh", "-c", "/app/migrate.sh && node server.js"]
+# Отправляем миграции и запускаем приложение
+CMD ["sh", "-c", "npx prisma migrate deploy && node server.js"]
