@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { getAllPosts } from '@/lib/posts_repository';
+import { getAllPosts } from '@/lib/repositories/posts_repository';
 
 export default async function Home() {
   const posts = await getAllPosts();
