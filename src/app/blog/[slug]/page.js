@@ -1,10 +1,12 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
-import { getPostBySlug, getAllPosts } from '@/lib/posts';
+import { getPostBySlug, getAllPosts } from '@/lib/posts_repository';
+
+export const dynamic = 'force-dynamic';
 
 // Генерируем статические страницы для всех постов
-export function generateStaticParams() {
-  const posts = getAllPosts();
+export async function generateStaticParams() {
+  const posts = await getAllPosts();
   return posts.map((post) => ({
     slug: post.slug,
   }));
@@ -12,7 +14,7 @@ export function generateStaticParams() {
 
 export default async function Page({ params }) {
   const { slug } = await params;
-  const post = getPostBySlug(slug);
+  const post = await getPostBySlug(slug);
 
   if (!post) {
     notFound();

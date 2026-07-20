@@ -1,8 +1,28 @@
+'use client'; // Добавляем директиву для клиентского компонента
+
 import Link from 'next/link';
-import { getAllPosts } from '@/lib/posts';
+import { useState, useEffect } from 'react';
 
 export default function Home() {
-  const posts = getAllPosts();
+  const [posts, setPosts] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch('/api/posts')
+      .then(res => res.json())
+      .then(data => {
+        setPosts(data.posts || []);
+        setLoading(false);
+      })
+      .catch(err => {
+        console.error('Ошибка загрузки постов:', err);
+        setLoading(false);
+      });
+  }, []);
+
+  if (loading) {
+    return <div className="flex justify-center items-center h-screen">Загрузка...</div>;
+  }
 
   return (
     <div className="flex flex-col flex-1 bg-zinc-50 font-sans dark:bg-black">

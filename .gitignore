@@ -53,4 +53,4 @@ Thumbs.db
 *.swo
 
 # Project specific
-src/data/*.json  # Если не хотите хранить данные в Git (опционально)
+/src/generated/prisma

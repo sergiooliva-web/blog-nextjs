@@ -5,10 +5,6 @@
 // Поддерживает: GET, POST, DELETE, PUT, PATCH
 // ============================================================
 
-// 📦 Импорт функции для добавления поста из библиотеки работы с JSON
-// @/lib/posts - алиас для src/lib/posts.js
-import { addPost } from '@/lib/posts';
-
 // 📦 Импорт утилиты Next.js для создания HTTP-ответов в формате JSON
 // NextResponse.json() - сокращение для создания ответов с JSON-телом
 import { NextResponse } from 'next/server';
@@ -25,12 +21,13 @@ export async function POST(request) {
   try {
     // 1️⃣ Извлекаем данные из тела запроса (JSON → объект)
     const body = await request.json();
+    const { title, slug, description, content, author } = body;
     
     // 2️⃣ ВАЛИДАЦИЯ: проверяем наличие обязательных полей
     // title - заголовок поста
     // slug - URL-адрес поста (например: "hello-world")
     // content - содержимое поста
-    if (!body.title || !body.slug || !body.content) {
+    if (!title || !slug || !content) {
       // ❌ Возвращаем ошибку 400 (Bad Request) с пояснением
       return NextResponse.json(
         { error: 'Заголовок, URL и содержание обязательны' },
@@ -46,14 +43,14 @@ export async function POST(request) {
     // $ - конец строки
     // Примеры валидных slug: "hello-world", "my-post-123"
     // Примеры невалидных: "Hello World", "post@123", "hello world"
-    if (!/^[a-z0-9-]+$/.test(body.slug)) {
+    if (!/^[a-z0-9-]+$/.test(slug)) {
       // ❌ Возвращаем ошибку 400 (Bad Request)
       return NextResponse.json(
         { error: 'URL может содержать только строчные буквы, цифры и дефисы' },
         { status: 400 }
       );
     }
-
+    const { addPost } = await import('@/lib/posts_repository');
     // 4️⃣ СОХРАНЕНИЕ: вызываем функцию addPost() из lib/posts.js
     // Что делает addPost():
     // - Генерирует новый уникальный ID
@@ -61,8 +58,9 @@ export async function POST(request) {
     // - Добавляет автора (author)
     // - Сохраняет пост в src/data/posts.json
     // - Возвращает созданный объект поста
-    const newPost = addPost(body);
+    const newPost = await addPost({ slug, title, description, content, author });
     
+    revalidatePath('/posts');
     // 5️⃣ УСПЕШНЫЙ ОТВЕТ: возвращаем созданный пост
     // Статус 201 (Created) - ресурс успешно создан
     return NextResponse.json({ 
@@ -96,11 +94,11 @@ export async function GET() {
     // Используем динамический импорт для оптимизации загрузки
     // Обычный импорт: import { getAllPosts } from '@/lib/posts'
     // Динамический импорт: загружается только когда нужен
-    const { getAllPosts } = await import('@/lib/posts');
+    const { getAllPosts } = await import('@/lib/posts_repository');
     
     // ПОЛУЧЕНИЕ ДАННЫХ: читаем все посты из JSON-файла
     // getAllPosts() возвращает массив объектов постов
-    const posts = getAllPosts();
+    const posts = await getAllPosts();
     
     // УСПЕШНЫЙ ОТВЕТ: возвращаем список постов
     // Статус 200 (OK) - запрос выполнен успешно
@@ -127,7 +125,7 @@ export async function GET() {
 export async function DELETE(request) {
   try {
     // ИМПОРТ: загружаем функцию deletePost
-    const { deletePost } = await import('@/lib/posts');
+    const { deletePost } = await import('@/lib/posts_repository');
     
     // ПАРСИМ: извлекаем ID из тела запроса
     const body = await request.json();
@@ -137,7 +135,7 @@ export async function DELETE(request) {
     // deletePost() возвращает:
     // - true - если пост успешно удален
     // - false - если пост с таким ID не найден
-    const deleted = deletePost(id);
+    const deleted = await deletePost(id);
     
     // ПРОВЕРКА: если пост не найден - возвращаем 404
     if (!deleted) {
@@ -170,7 +168,7 @@ export async function DELETE(request) {
 export async function PUT(request) {
   try {
     // ИМПОРТ: загружаем функцию updatePost
-    const { updatePost } = await import('@/lib/posts');
+    const { updatePost } = await import('@/lib/posts_repository');
     
     // ПАРСИМ: извлекаем данные из тела запроса
     const body = await request.json();
@@ -179,7 +177,7 @@ export async function PUT(request) {
     // ОБНОВЛЕНИЕ: вызываем updatePost() с новыми данными
     // updatePost() находит пост по ID и заменяет его данные
     // Возвращает обновленный пост или null если не найден
-    const updatedPost = updatePost(id, { title, slug, content });
+    const updatedPost = await updatePost(id, { title, slug, content });
     
     // ПРОВЕРКА: если пост не найден - возвращаем 404
     if (!updatedPost) {
@@ -215,7 +213,7 @@ export async function PUT(request) {
 export async function PATCH(request) {
   try {
     //  ИМПОРТ: загружаем функцию updatePost
-    const { updatePost } = await import('@/lib/posts');
+    const { updatePost } = await import('@/lib/posts_repository');
     
     // ПАРСИМ: извлекаем ID и данные для обновления
     const body = await request.json();
@@ -225,7 +223,7 @@ export async function PATCH(request) {
     
     // ОБНОВЛЕНИЕ: передаем только поля, которые нужно изменить
     // В отличие от PUT, PATCH обновляет только переданные поля
-    const updatedPost = updatePost(id, updateData);
+    const updatedPost = await updatePost(id, updateData);
     
     // ПРОВЕРКА: если пост не найден - возвращаем 404
     if (!updatedPost) {
