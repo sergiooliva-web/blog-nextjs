@@ -1,6 +1,47 @@
 import { Prisma } from "@prisma/client";
 import type { AppError } from "@/lib/domain/errors";
 
+/**
+ * Функция-обертка для безопасного выполнения запросов к базе данных.
+ * Перехватывает системные исключения Prisma ORM и конвертирует их в строгие доменные ошибки `AppError`.
+ *
+ * Обязательна к применению для всех методов репозитория. Гарантирует, что слой
+ * бизнес-логики никогда не столкнется с необработанными падениями (Unhandled Exceptions) от БД.
+ *
+ * Автоматически мапит следующие коды Prisma:
+ * - P2000, P2011, P2012 -> `VALIDATION_ERROR`;
+ * - P2002 -> `DUPLICATE_ENTITY`;
+ * - P2003, P2014 -> `RELATION_VIOLATION`;
+ * - P2025 -> `NOT_FOUND`;
+ *
+ * В случае возникновения неизвестной ошибки или ошибки не связанной с бизнес-логикой возвращает `DATABASE_FATAL_ERROR`.
+ *
+ * @param func - Исходная асинхронная функция, выполняющая запрос к БД.
+ * @returns Новая функция с той же сигнатурой аргументов, возвращающая либо чистые данные `T`, либо объект `AppError`.
+ *
+ * @example
+ * export const userRepository = {
+ * // Оборачиваем запрос, чтобы безопасно перехватить возможное нарушение UNIQUE slug
+ * addPost: repositoryWithDatabaseErrors(
+ *   async (postData: {
+ *     slug: string;
+ *     title: string;
+ *     description?: string;
+ *     content?: string;
+ *     author?: string;
+ *   }) => {
+ *     return await prisma.post.create({
+ *       data: {
+ *         slug: postData.slug,
+ *         title: postData.title,
+ *         description: postData.description,
+ *         content: postData.content,
+ *         author: postData.author,
+ *       },
+ *     });
+ *   },
+ * )
+ */
 export function repositoryWithDatabaseErrors<T, Args extends any[]>(
   func: (...args: Args) => Promise<T>,
 ): (...args: Args) => Promise<T | AppError> {

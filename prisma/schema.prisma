@@ -10,13 +10,25 @@ datasource db {
 }
 
 
+/// Публикация в блоге.
+/// Является основной сущностью системы.
 model Post {
   id          Int      @id @default(autoincrement())
+  
+  /// Человекочитаемый URL. 
+  /// Индексируется для быстрого поиска, строго уникален.
   slug        String   @unique
+
   title       String
+  
+  /// Краткое превью статьи для вывода в карточках на главной странице.
+  /// Может быть пустым (null), если автор не заполнил SEO-блок.
   description String?
+
   content     String?
+
   date        DateTime @default(now())
+
   author      String   @default("Anonymous")
 
   @@map("posts")
