@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
-import { getPostBySlug, getAllPosts } from '@/lib/posts_repository';
+import { getPostBySlug, getAllPosts } from '@/lib/repositories/posts_repository';
 
 export const dynamic = 'force-dynamic';
 

@@ -50,7 +50,7 @@ export async function POST(request) {
         { status: 400 }
       );
     }
-    const { addPost } = await import('@/lib/posts_repository');
+    const { addPost } = await import('@/lib/repositories/posts_repository');
     // 4️⃣ СОХРАНЕНИЕ: вызываем функцию addPost() из lib/posts.js
     // Что делает addPost():
     // - Генерирует новый уникальный ID
@@ -94,7 +94,7 @@ export async function GET() {
     // Используем динамический импорт для оптимизации загрузки
     // Обычный импорт: import { getAllPosts } from '@/lib/posts'
     // Динамический импорт: загружается только когда нужен
-    const { getAllPosts } = await import('@/lib/posts_repository');
+    const { getAllPosts } = await import('@/lib/repositories/posts_repository');
     
     // ПОЛУЧЕНИЕ ДАННЫХ: читаем все посты из JSON-файла
     // getAllPosts() возвращает массив объектов постов
@@ -125,7 +125,7 @@ export async function GET() {
 export async function DELETE(request) {
   try {
     // ИМПОРТ: загружаем функцию deletePost
-    const { deletePost } = await import('@/lib/posts_repository');
+    const { deletePost } = await import('@/lib/repositories/posts_repository');
     
     // ПАРСИМ: извлекаем ID из тела запроса
     const body = await request.json();
@@ -168,7 +168,7 @@ export async function DELETE(request) {
 export async function PUT(request) {
   try {
     // ИМПОРТ: загружаем функцию updatePost
-    const { updatePost } = await import('@/lib/posts_repository');
+    const { updatePost } = await import('@/lib/repositories/posts_repository');
     
     // ПАРСИМ: извлекаем данные из тела запроса
     const body = await request.json();
@@ -213,7 +213,7 @@ export async function PUT(request) {
 export async function PATCH(request) {
   try {
     //  ИМПОРТ: загружаем функцию updatePost
-    const { updatePost } = await import('@/lib/posts_repository');
+    const { updatePost } = await import('@/lib/repositories/posts_repository');
     
     // ПАРСИМ: извлекаем ID и данные для обновления
     const body = await request.json();
