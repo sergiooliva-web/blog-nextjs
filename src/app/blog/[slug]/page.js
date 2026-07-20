@@ -1,22 +1,35 @@
+// src/app/blog/[slug]/page.js
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
-import { getPostBySlug, getAllPosts } from '@/lib/repositories/posts_repository';
+import { postsRepository } from '@/lib/repositories/posts_repository';
 
 export const dynamic = 'force-dynamic';
 
 // Генерируем статические страницы для всех постов
 export async function generateStaticParams() {
-  const posts = await getAllPosts();
-  return posts.map((post) => ({
-    slug: post.slug,
-  }));
+  try {
+    const posts = await postsRepository.getAllPosts();
+    console.log('generateStaticParams: найдено постов:', posts.length);
+    return posts.map((post) => ({
+      slug: post.slug,
+    }));
+  } catch (error) {
+    console.error('Ошибка генерации статических параметров:', error);
+    return [];
+  }
 }
 
 export default async function Page({ params }) {
   const { slug } = await params;
-  const post = await getPostBySlug(slug);
+  
+  console.log('Ищем пост с slug:', slug);
+  
+  const post = await postsRepository.getBySlug(slug);
+  
+  console.log('Результат getBySlug:', post);
 
   if (!post) {
+    console.log('Пост не найден, вызываем notFound()');
     notFound();
   }
 
@@ -32,11 +45,11 @@ export default async function Page({ params }) {
             {post.title}
           </h1>
           <div className="flex gap-4 text-sm text-gray-500 dark:text-gray-400 mb-6">
-            <span>📅 {post.date}</span>
-            <span>✍️ {post.author}</span>
+            <span>{new Date(post.date).toLocaleDateString()}</span>
+            <span>{post.author}</span>
           </div>
           <div className="prose prose-lg dark:prose-invert max-w-none">
-            {post.content.split('\n').map((paragraph, i) => (
+            {post.content?.split('\n').map((paragraph, i) => (
               <p key={i} className="text-gray-700 dark:text-gray-300 leading-relaxed">
                 {paragraph}
               </p>
@@ -46,7 +59,7 @@ export default async function Page({ params }) {
 
         <div className="mt-auto pt-4 border-t border-gray-200 dark:border-gray-800">
           <p className="text-sm text-gray-400 dark:text-gray-500 text-center">
-            💡 Статья из блога
+            Статья из блога
           </p>
         </div>
       </main>
