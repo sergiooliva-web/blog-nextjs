@@ -27,9 +27,40 @@ model Post {
 
   content     String?
 
-  date        DateTime @default(now())
+  /// Ссылка на картинку-обложку
+  image       String?
 
-  author      String   @default("Anonymous")
+  /// ID автора статьи, необязателен, чтобы при удалении - не следовало удалять посты
+  authorId    Int?
+
+  /// Связь с таблицей Users. 
+  author      User?    @relation(fields: [authorId], references: [id], onDelete: SetNull)
+
+  createdAt   DateTime @default(now())
+
+  /// Автоматически обновляется при любом изменении записи
+  updatedAt   DateTime @updatedAt
 
   @@map("posts")
+}
+
+/// Пользователь системы (автор публикаций).
+model User {
+  id        Int      @id @default(autoincrement())
+  
+  /// Уникальный логин для входа
+  email     String   @unique
+  
+  /// Хэш пароля
+  passwordHash  String   
+  
+  /// Отображаемое имя на сайте
+  name      String
+  
+  createdAt DateTime @default(now())
+  
+  /// Обратная связь: список всех постов, написанных этим пользователем.
+  posts     Post[]
+
+  @@map("users")
 }

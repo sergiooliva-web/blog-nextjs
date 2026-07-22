@@ -29,7 +29,7 @@ FROM node:22-alpine AS production
 
 WORKDIR /app
 
-RUN npm install prisma --no-save
+RUN npm install prisma dotenv --no-save
 
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
@@ -37,6 +37,8 @@ COPY --from=builder /app/public ./public
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/prisma.config.ts ./
 COPY --from=builder /app/.next/server ./.next/server
+
+RUN mkdir -p /app/uploads
 
 ENV NODE_ENV=production
 ENV PORT=4040
