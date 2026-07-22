@@ -3,7 +3,12 @@ import { AppResult, success, failure } from "@/lib/result";
 import { isAppError, type AppError } from "@/lib/domain/errors";
 import { CreatePostSchema, UpdatePostSchema } from "@/lib/domain/schemas";
 import type { Post } from "@prisma/client";
-import { formatZodError } from "../utils/zod_error_parser";
+import { formatZodError } from "@/lib/utils/zod_error_parser";
+import { generateUniqueSlug } from "@/lib/utils/slug_generator";
+import type {
+  PostFullItemDTO,
+  PostListItemDTO,
+} from "@/lib/repositories/posts_repository";
 
 export const postService = {
   /**
@@ -11,7 +16,7 @@ export const postService = {
    *
    * @returns Массив постов. При системном сбое БД возвращает DATABASE_FATAL_ERROR.
    */
-  async getAllPosts(): Promise<AppResult<Post[], AppError>> {
+  async getAllPosts(): Promise<AppResult<PostListItemDTO[], AppError>> {
     const getPostsResponse = await postsRepository.getAllPosts();
 
     if (isAppError(getPostsResponse)) {
@@ -28,11 +33,19 @@ export const postService = {
    * @param postSlug - Строковый URL-идентификатор поста.
    * @returns Объект поста или `null`. При системном сбое БД возвращает DATABASE_FATAL_ERROR.
    */
-  async getBySlug(postSlug: string): Promise<AppResult<Post | null, AppError>> {
+  async getBySlug(
+    postSlug: string,
+  ): Promise<AppResult<PostFullItemDTO, AppError>> {
     const getPostBySlugResponse = await postsRepository.getBySlug(postSlug);
 
     if (isAppError(getPostBySlugResponse)) {
       return failure(getPostBySlugResponse);
+    }
+
+    if (getPostBySlugResponse === null) {
+      return failure({
+        code: "NOT_FOUND",
+      });
     }
 
     return success(getPostBySlugResponse);
@@ -50,7 +63,10 @@ export const postService = {
    * - `DUPLICATE_ENTITY` - публикация с таким slug уже существует.
    * - `DATABASE_FATAL_ERROR` - системный сбой.
    */
-  async createPost(rawData: unknown): Promise<AppResult<Post, AppError>> {
+  async createPost(
+    rawData: unknown,
+    authorId: number,
+  ): Promise<AppResult<PostFullItemDTO, AppError>> {
     const parsed = CreatePostSchema.safeParse(rawData);
     if (!parsed.success) {
       return failure({
@@ -59,7 +75,31 @@ export const postService = {
       });
     }
 
-    const createNewPostResponse = await postsRepository.addPost(parsed.data);
+    const lastPostResponse =
+      await postsRepository.getLastPostByAuthorId(authorId);
+
+    if (lastPostResponse && !isAppError(lastPostResponse)) {
+      const now = new Date();
+      const diffInSeconds =
+        (now.getTime() - lastPostResponse.updatedAt.getTime()) / 1000;
+
+      if (diffInSeconds < 60) {
+        return failure({
+          code: "TOO_MANY_REQUESTS",
+          retryAfter: Math.ceil(60 - diffInSeconds),
+        });
+      }
+    }
+
+    const generatedSlug = await generateUniqueSlug(parsed.data.title);
+
+    const postToSave = {
+      ...parsed.data,
+      slug: generatedSlug,
+      authorId: authorId,
+    };
+
+    const createNewPostResponse = await postsRepository.addPost(postToSave);
 
     if (isAppError(createNewPostResponse)) {
       return failure(createNewPostResponse);
@@ -78,7 +118,24 @@ export const postService = {
    * - `NOT_FOUND` - пост с таким ID не существует.
    * - `DATABASE_FATAL_ERROR` - системный сбой или нарушение связей.
    */
-  async deletePost(postId: number): Promise<AppResult<void, AppError>> {
+  async deletePost(
+    postId: number,
+    authorId: number,
+  ): Promise<AppResult<void, AppError>> {
+    const existingPost = await postsRepository.getById(postId);
+
+    if (isAppError(existingPost)) {
+      return failure(existingPost);
+    }
+
+    if (existingPost === null) {
+      return failure({ code: "NOT_FOUND" });
+    }
+
+    if (authorId !== existingPost.authorId) {
+      return failure({ code: "FORBIDDEN" });
+    }
+
     const deletePostResponse = await postsRepository.deletePost(postId);
 
     if (isAppError(deletePostResponse)) {
@@ -105,13 +162,43 @@ export const postService = {
   async updatePost(
     postId: number,
     rawData: unknown,
-  ): Promise<AppResult<Post, AppError>> {
+    authorId: number,
+  ): Promise<AppResult<PostFullItemDTO, AppError>> {
     const parsed = UpdatePostSchema.safeParse(rawData);
     if (!parsed.success) {
       return failure({
         code: "VALIDATION_ERROR",
         fields: formatZodError(parsed.error),
       });
+    }
+
+    const lastPostResponse =
+      await postsRepository.getLastPostByAuthorId(authorId);
+
+    if (lastPostResponse && !isAppError(lastPostResponse)) {
+      const now = new Date();
+      const diffInSeconds =
+        (now.getTime() - lastPostResponse.createdAt.getTime()) / 1000;
+
+      if (diffInSeconds < 10) {
+        return failure({
+          code: "TOO_MANY_REQUESTS",
+          retryAfter: Math.ceil(10 - diffInSeconds),
+        });
+      }
+    }
+    const existingPost = await postsRepository.getById(postId);
+
+    if (isAppError(existingPost)) {
+      return failure(existingPost);
+    }
+
+    if (existingPost === null) {
+      return failure({ code: "NOT_FOUND" });
+    }
+
+    if (authorId !== existingPost.authorId) {
+      return failure({ code: "FORBIDDEN" });
     }
 
     const updatePostResponse = await postsRepository.updatePost(
