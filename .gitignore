@@ -54,3 +54,5 @@ Thumbs.db
 
 # Project specific
 /src/generated/prisma
+/uploads
+api-tests.http
