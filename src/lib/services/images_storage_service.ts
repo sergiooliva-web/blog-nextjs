@@ -13,10 +13,16 @@ export const imagesStorageService = {
    */
   async saveImage(file: File): Promise<AppResult<string, AppError>> {
     try {
-      if (!file.type.startsWith("image/")) {
+      const allowedTypes = [
+        "image/jpeg",
+        "image/png",
+        "image/webp",
+        "image/gif",
+      ];
+      if (!allowedTypes.includes(file.type)) {
         return failure({
           code: "VALIDATION_ERROR",
-          fields: { file: ["err_file_must_be_image"] },
+          fields: { image: ["err_file_must_be_image_jpg_png_webp_gif"] },
         });
       }
 
